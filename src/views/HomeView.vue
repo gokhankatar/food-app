@@ -10,6 +10,12 @@
           color="red darken-1"
           icon="mdi-delete"
         />
+        <v-icon
+          @click="update(item)"
+          class="update-icon cursor-pointer"
+          color="primary"
+          icon="mdi-file-edit"
+        />
         <v-img class="card-image" :src="item.image" height="200" cover />
         <v-card-content class="d-flex flex-column align-center align-md-start pa-2 ga-2">
           <v-card-title>{{ item.meal.toUpperCase() }}</v-card-title>
@@ -22,11 +28,7 @@
             </p>
           </div>
           <v-card-subtitle class="time">
-            {{
-              typeof item.date === "object"
-                ? formattedDate(item.date.toDate())
-                : item.date
-            }}
+            {{ formattedDate(item.date) }}
           </v-card-subtitle>
         </v-card-content>
       </v-card>
@@ -72,16 +74,29 @@
         variant="outlined"
       />
       <v-btn
+        v-if="!isUpdate"
         class="bg-success border-none"
         type="submit"
         variant="outlined"
         rounded="xl"
         block
-        >Add</v-btn
+      >
+        Add</v-btn
       >
       <v-btn
-        @click="_store.closeAddFood"
+        @click="updateFood()"
+        v-if="isUpdate"
         class="bg-warning border-none"
+        variant="outlined"
+        rounded="xl"
+        block
+      >
+        Save</v-btn
+      >
+      <v-btn
+        @click="cancel"
+        :class="isUpdate ? 'bg-red' : 'bg-warning'"
+        class="border-none"
         variant="outlined"
         rounded="xl"
         block
@@ -106,12 +121,13 @@ import {
   getFirestore,
   orderBy,
   query,
-  serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 
 const _store = store();
 
 const isLoading = ref(false);
+const isUpdate = ref(false);
 
 const meals = ["breakfast", "lunch", "snack", "dinner"];
 const formRef = ref(null);
@@ -129,6 +145,8 @@ const modelRules = reactive({
   foods: [(v) => !!v || "Food/Foods is required!"],
 });
 
+const activeItems = ref({});
+
 const db = getFirestore();
 const colRef = collection(db, "foodArr");
 
@@ -145,6 +163,7 @@ const getFoods = async () => {
       foodArr.value.push({
         ...doc.data(),
         id: doc.id,
+        date: new Date(),
       });
     });
     isLoading.value = false;
@@ -153,6 +172,7 @@ const getFoods = async () => {
   }
 };
 
+// delete
 const deleteFood = async (id) => {
   try {
     // delete from Database
@@ -166,6 +186,7 @@ const deleteFood = async (id) => {
   }
 };
 
+// add
 const addFood = async () => {
   try {
     // add into database
@@ -173,7 +194,7 @@ const addFood = async () => {
       meal: models.value.meal,
       image: models.value.foodImgUrl,
       foods: models.value.foods,
-      date: serverTimestamp(),
+      date: new Date(),
     });
 
     // add into dom
@@ -192,6 +213,56 @@ const addFood = async () => {
   }
 };
 
+// update (before update)
+const update = (item) => {
+  isUpdate.value = true;
+  _store.openAddFood();
+  activeItems.value = item;
+  models.value.meal = activeItems.value.meal;
+  models.value.foods = activeItems.value.foods;
+  models.value.foodImgUrl = activeItems.value.image;
+};
+
+// update food
+const updateFood = () => {
+  try {
+    const docRef = doc(db, "foodArr", activeItems.value.id);
+    updateDoc(docRef, {
+      date: new Date(),
+      foods: models.value.foods,
+      image: models.value.foodImgUrl,
+      meal: models.value.meal,
+    });
+
+    const index = foodArr.value.findIndex((food) => food.id === activeItems.value.id);
+    if (index !== -1) {
+      foodArr.value[index] = {
+        date: new Date(),
+        foods: models.value.foods,
+        image: models.value.foodImgUrl,
+        meal: models.value.meal,
+      };
+    }
+
+    formRef.value.reset();
+    isUpdate.value = false;
+    activeItems.value = {};
+    _store.closeAddFood();
+  } catch (error) {
+    console.error(error.message);
+  }
+};
+
+const cancel = () => {
+  _store.closeAddFood();
+  isUpdate.value = false;
+  activeItems.value = {};
+  models.value.foodImgUrl = "";
+  models.value.foods = null;
+  models.value.meal = "";
+};
+
+// validate
 const validate = async () => {
   const { valid } = await formRef.value.validate();
 
@@ -212,9 +283,16 @@ onMounted(() => {
   right: 1%;
 }
 
+.update-icon {
+  position: absolute;
+  z-index: 999;
+  top: 2%;
+  left: 1%;
+}
+
 .form {
   box-shadow: 0 0 1.5rem red;
-  background: rgba(114, 94, 94, 0.767);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .time {
