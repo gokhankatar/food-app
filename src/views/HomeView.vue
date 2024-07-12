@@ -104,6 +104,9 @@
       >
     </v-form>
   </v-dialog>
+
+  <!-- toast -->
+  <v-snackbar v-model="isInfo" :color="info.color">{{ info.msg }}</v-snackbar>
 </template>
 
 <script setup>
@@ -128,6 +131,11 @@ const _store = store();
 
 const isLoading = ref(false);
 const isUpdate = ref(false);
+const isInfo = ref(false);
+const info = ref({
+  msg: "",
+  color: "",
+});
 
 const meals = ["breakfast", "lunch", "snack", "dinner"];
 const formRef = ref(null);
@@ -181,6 +189,14 @@ const deleteFood = async (id) => {
 
     // delete from DOM
     foodArr.value = foodArr.value.filter((food) => id !== food.id);
+
+    // toast
+    info.value.color = "red";
+    info.value.msg = "Deleted food successfully!";
+    isInfo.value = true;
+    setTimeout(() => {
+      isInfo.value = false;
+    }, 2000);
   } catch (error) {
     console.error(error.message);
   }
@@ -208,6 +224,14 @@ const addFood = async () => {
 
     _store.closeAddFood();
     formRef.value.reset();
+
+    // toast
+    info.value.color = "success";
+    info.value.msg = "Added food successfully!";
+    isInfo.value = true;
+    setTimeout(() => {
+      isInfo.value = false;
+    }, 2000);
   } catch (error) {
     console.error(error.message);
   }
@@ -248,6 +272,14 @@ const updateFood = () => {
     isUpdate.value = false;
     activeItems.value = {};
     _store.closeAddFood();
+
+    // toast
+    info.value.color = "primary";
+    info.value.msg = "Updated food successfully!";
+    isInfo.value = true;
+    setTimeout(() => {
+      isInfo.value = false;
+    }, 2000);
   } catch (error) {
     console.error(error.message);
   }
@@ -275,6 +307,7 @@ onMounted(() => {
   getFoods();
 });
 </script>
+
 <style scoped>
 .delete-icon {
   position: absolute;
